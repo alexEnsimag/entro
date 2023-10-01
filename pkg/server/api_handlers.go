@@ -1,10 +1,11 @@
-package api
+package server
 
 import (
 	"alex/entro/server/pkg/report"
 	"alex/entro/server/pkg/sources"
 	"encoding/json"
 	"net/http"
+	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -15,13 +16,13 @@ import (
 // API is an API
 type API struct {
 	logger                 *zap.Logger
-	reportDBStatus         report.DBStatus
+	reportDBStatus         DBStatus
 	reportStorage          report.Storage
 	reportCreationRequests chan reportCreationRequest
 }
 
 // NewAPI creates an API
-func NewAPI(reportDBStatus report.DBStatus, reportStorage report.Storage, requestBufferSize int) API {
+func NewAPI(reportDBStatus DBStatus, reportStorage report.Storage, requestBufferSize int) API {
 	api := API{
 		reportDBStatus:         reportDBStatus,
 		reportStorage:          reportStorage,
@@ -38,7 +39,6 @@ type reportCreationRequest struct {
 }
 
 // CreateReport initiates the creation of a report
-// FIXME (alex): endpoint name should explicitly contain the sources (AWS secrets manager and cloud trail)
 func (a API) CreateReport(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		AWSAccessKeyID     string `json:"awsAccessKeyID"`
@@ -52,12 +52,10 @@ func (a API) CreateReport(w http.ResponseWriter, r *http.Request) {
 	err := decoder.Decode(&body)
 	if err != nil {
 		a.logger.Debug("failed to decode body", zap.Error(err))
-		// FIXME (alex): send back explicit error
 		w.WriteHeader(http.StatusBadRequest)
 	}
 
 	logger := a.logger.With(zap.String("awsAccessKeyID", body.AWSAccessKeyID), zap.String("awsRegion", body.AWSRegion))
-	// FIXME (alex): verify region is valid
 
 	// creation AWS session
 	s, err := session.NewSession(&aws.Config{
@@ -66,7 +64,6 @@ func (a API) CreateReport(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		logger.Debug("failed to create AWS session", zap.Error(err))
-		// FIXME (alex): send back explicit error
 		w.WriteHeader(http.StatusInternalServerError)
 	}
 
@@ -92,13 +89,11 @@ func (a API) CreateReport(w http.ResponseWriter, r *http.Request) {
 		respBytes, err := json.Marshal(resp)
 		if err != nil {
 			logger.Debug("failed to marshal response", zap.Error(err))
-			// FIXME (alex): send back explicit error
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		if _, err := w.Write(respBytes); err != nil {
 			logger.Debug("failed to write response", zap.Error(err))
-			// FIXME (alex): send back explicit error
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -107,7 +102,6 @@ func (a API) CreateReport(w http.ResponseWriter, r *http.Request) {
 		a.reportDBStatus.WriteStatus(id, report.StatusCreating)
 	default:
 		logger.Debug("failed to create report request, channel is full")
-		// FIXME (alex): send back explicit error
 		w.WriteHeader(http.StatusInternalServerError)
 	}
 }
@@ -119,7 +113,6 @@ func (a API) GetReportStatus(w http.ResponseWriter, r *http.Request) {
 
 	if !report.IsValidID(reportID) {
 		logger.Debug("wrong report ID")
-		// FIXME (alex): send back explicit error
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -127,26 +120,23 @@ func (a API) GetReportStatus(w http.ResponseWriter, r *http.Request) {
 	status, found := a.reportDBStatus.ReadStatus(report.ID(reportID))
 	if !found {
 		logger.Debug("report not found")
-		// FIXME (alex): send back explicit error
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	resp := struct {
-		ReportStatus report.Status `json:"reportStatus"`
+		ReportStatus report.Status `json:"status"`
 	}{
 		ReportStatus: status,
 	}
 	respBytes, err := json.Marshal(resp)
 	if err != nil {
 		logger.Debug("failed to marshal response", zap.Error(err))
-		// FIXME (alex): send back explicit error
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	if _, err := w.Write(respBytes); err != nil {
 		logger.Debug("failed to write response", zap.Error(err))
-		// FIXME (alex): send back explicit error
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -154,31 +144,42 @@ func (a API) GetReportStatus(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// DownloadReport downloads a report
-func (a API) DownloadReport(w http.ResponseWriter, r *http.Request) {
+func (a API) GetReportFilePath(w http.ResponseWriter, r *http.Request) {
 	reportID := r.URL.Query().Get("reportID")
 	logger := a.logger.With(zap.String("reportID", reportID))
 
 	if !report.IsValidID(reportID) {
 		logger.Debug("wrong report ID")
-		// FIXME (alex): send back explicit error
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	data, err := a.reportStorage.ReadRaw(report.ID(reportID))
-	if err != nil {
-		logger.Debug("failed to read report", zap.Error(err))
+	filePath := reportFilePath(report.ID(reportID))
+	if _, err := os.Stat(filePath); err != nil {
+		logger.Debug("report not found")
+		w.WriteHeader(http.StatusBadRequest)
+		return
 	}
 
-	if _, err := w.Write(data); err != nil {
-		logger.Debug("failed to write response", zap.Error(err))
-		// FIXME (alex): send back explicit error
+	resp := struct {
+		Path string `json:"path"`
+	}{
+		Path: filePath,
+	}
+	respBytes, err := json.Marshal(resp)
+	if err != nil {
+		logger.Debug("failed to marshal response", zap.Error(err))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	logger.Info("Successfully downloaded report")
+	if _, err := w.Write(respBytes); err != nil {
+		logger.Debug("failed to write response", zap.Error(err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	logger.Info("Successfully returned report path", zap.Any("reportPath", filePath))
 	w.WriteHeader(http.StatusOK)
+
 }
 
 func (a API) createReport() {
@@ -211,11 +212,15 @@ func (a API) createReport() {
 			continue
 		}
 
-		if err := a.reportStorage.Write(r.id, reportData); err != nil {
+		if err := a.reportStorage.Write(reportFilePath(r.id), reportData); err != nil {
 			logger.Debug("failed to create report", zap.Error(err))
 			a.reportDBStatus.WriteStatus(r.id, report.StatusFailed)
 		} else {
 			a.reportDBStatus.WriteStatus(r.id, report.StatusCreated)
 		}
 	}
+}
+
+func reportFilePath(reportID report.ID) string {
+	return "/tmp/" + string(reportID)
 }

@@ -30,6 +30,16 @@ type Entry struct {
 	Logs           []AuditTrail   `json:"logs"`
 }
 
+// Status is the status of a report
+type Status string
+
+// Set of status for a report
+const (
+	StatusCreating Status = "creating"
+	StatusCreated  Status = "created"
+	StatusFailed   Status = "failed"
+)
+
 // GenerateID generates a report ID
 func GenerateID() ID {
 	return ID(uuid.New().String())

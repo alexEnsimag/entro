@@ -1,7 +1,7 @@
 package sources
 
 import (
-	"alex/entro/server/pkg/report"
+	"alex/entro/pkg/report"
 	"fmt"
 
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -22,7 +22,6 @@ type AWSSecretsManager struct {
 func (impl AWSSecretsManager) ListSecrets() ([]report.SecretMetadata, error) {
 	svc := secretsmanager.New(&impl.AWSSession)
 
-	// FIXME (alex): handle pagination
 	trueVar := true
 	maxResult := int64(100)
 	secrets, err := svc.ListSecrets(&secretsmanager.ListSecretsInput{
@@ -38,20 +37,10 @@ func (impl AWSSecretsManager) ListSecrets() ([]report.SecretMetadata, error) {
 
 	var res []report.SecretMetadata
 	for _, secret := range secrets.SecretList {
-		// convert tags
-		tags := map[string]string{}
-		for _, t := range secret.Tags {
-			tags[*t.Key] = *t.Value
-		}
-		if len(tags) == 0 {
-			tags = nil
-		}
-
-		// save secret metadata
 		metadata := report.SecretMetadata{
 			ID:     *secret.ARN,
+			Name:   *secret.Name,
 			Region: impl.Region,
-			Tags:   tags,
 		}
 		res = append(res, metadata)
 	}

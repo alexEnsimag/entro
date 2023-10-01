@@ -1,7 +1,7 @@
 package sources
 
 import (
-	"alex/entro/server/pkg/report"
+	"alex/entro/pkg/report"
 	"fmt"
 
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -22,7 +22,6 @@ type AWSCloudTrail struct {
 func (impl AWSCloudTrail) ListAuditTrails(secretName string) ([]report.AuditTrail, error) {
 	svc := cloudtrail.New(&impl.AWSSession)
 
-	// FIXME (alex): handle pagination
 	maxResult := int64(100)
 	resourceName := "ResourceName"
 	eventSource := "EventSource"
@@ -43,8 +42,6 @@ func (impl AWSCloudTrail) ListAuditTrails(secretName string) ([]report.AuditTrai
 	if err != nil {
 		return nil, fmt.Errorf("failed to list trails for secret %s: %w", secretName, err)
 	}
-
-	// FIXME (alex): load record from S3 in order to get more details about the event
 
 	var res []report.AuditTrail
 	for _, e := range events.Events {
