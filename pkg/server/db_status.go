@@ -1,14 +1,13 @@
 package server
 
 import (
-	"alex/entro/server/pkg/report"
+	"alex/entro/pkg/report"
 	"sync"
 )
 
 // DBStatus is a database where the reports' status is saved
 type DBStatus struct {
-	// FIXME (alex): save the details of the error in case an error happened
-	db map[report.ID]report.Status // FIXME (alex): use a persistent storage
+	db map[report.ID]report.Status
 	mu *sync.RWMutex
 }
 

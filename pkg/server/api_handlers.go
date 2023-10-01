@@ -1,8 +1,8 @@
 package server
 
 import (
-	"alex/entro/server/pkg/report"
-	"alex/entro/server/pkg/sources"
+	"alex/entro/pkg/connectors"
+	"alex/entro/pkg/report"
 	"encoding/json"
 	"net/http"
 	"os"
@@ -22,8 +22,9 @@ type API struct {
 }
 
 // NewAPI creates an API
-func NewAPI(reportDBStatus DBStatus, reportStorage report.Storage, requestBufferSize int) API {
+func NewAPI(logger *zap.Logger, reportDBStatus DBStatus, reportStorage report.Storage, requestBufferSize int) API {
 	api := API{
+		logger:                 logger,
 		reportDBStatus:         reportDBStatus,
 		reportStorage:          reportStorage,
 		reportCreationRequests: make(chan reportCreationRequest, requestBufferSize),
@@ -34,12 +35,12 @@ func NewAPI(reportDBStatus DBStatus, reportStorage report.Storage, requestBuffer
 
 type reportCreationRequest struct {
 	id                report.ID
-	secretManager     sources.SecretsManager
-	auditTrailManager sources.AuditTrailManager
+	secretManager     connectors.SecretsManager
+	auditTrailManager connectors.AuditTrailManager
 }
 
-// CreateReport initiates the creation of a report
-func (a API) CreateReport(w http.ResponseWriter, r *http.Request) {
+// CreateReportFromAWS initiates the creation of a report from AWS
+func (a API) CreateReportFromAWS(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		AWSAccessKeyID     string `json:"awsAccessKeyID"`
 		AWSSecretAccessKey string `json:"awsSecretAccessKey"`
@@ -53,6 +54,7 @@ func (a API) CreateReport(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.logger.Debug("failed to decode body", zap.Error(err))
 		w.WriteHeader(http.StatusBadRequest)
+		return
 	}
 
 	logger := a.logger.With(zap.String("awsAccessKeyID", body.AWSAccessKeyID), zap.String("awsRegion", body.AWSRegion))
@@ -65,6 +67,7 @@ func (a API) CreateReport(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Debug("failed to create AWS session", zap.Error(err))
 		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
 	// add report request to queue
@@ -72,11 +75,11 @@ func (a API) CreateReport(w http.ResponseWriter, r *http.Request) {
 	select {
 	case a.reportCreationRequests <- reportCreationRequest{
 		id: id,
-		secretManager: sources.AWSSecretsManager{
+		secretManager: connectors.AWSSecretsManager{
 			AWSSession: *s,
 			Region:     body.AWSRegion,
 		},
-		auditTrailManager: sources.AWSCloudTrail{
+		auditTrailManager: connectors.AWSCloudTrail{
 			AWSSession: *s,
 			Region:     body.AWSRegion,
 		},
@@ -140,8 +143,8 @@ func (a API) GetReportStatus(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	logger.Info("Successfully returned report status", zap.Any("reportStatus", status))
 	w.WriteHeader(http.StatusOK)
+	logger.Info("Successfully returned report status", zap.Any("reportStatus", status))
 }
 
 func (a API) GetReportFilePath(w http.ResponseWriter, r *http.Request) {
@@ -177,9 +180,8 @@ func (a API) GetReportFilePath(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	logger.Info("Successfully returned report path", zap.Any("reportPath", filePath))
 	w.WriteHeader(http.StatusOK)
-
+	logger.Info("Successfully returned report path", zap.Any("reportPath", filePath))
 }
 
 func (a API) createReport() {
@@ -196,7 +198,6 @@ func (a API) createReport() {
 
 		var auditTrails []report.AuditTrail
 		for _, s := range secrets {
-			// FIXME (alex): retry
 			auditTrails, err = r.auditTrailManager.ListAuditTrails(s.Name)
 			if err != nil {
 				logger.Debug("failed to list logs", zap.String("secretName", s.Name), zap.Error(err))

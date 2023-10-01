@@ -1,19 +1,19 @@
 package main
 
 import (
-	"alex/entro/server/pkg/report"
-	"alex/entro/server/pkg/server"
+	"alex/entro/pkg/report"
+	"alex/entro/pkg/server"
 	"go.uber.org/zap"
 	"net/http"
 )
 
 func main() {
-	logger := zap.Must(zap.NewProduction())
+	logger := zap.Must(zap.NewDevelopment())
 	logger.Info("Starting API server")
 
-	apiImpl := server.NewAPI(server.NewReportStatusDB(), report.Storage{}, 1000)
+	apiImpl := server.NewAPI(logger, server.NewReportStatusDB(), report.Storage{}, 1000)
 
-	http.HandleFunc("/create", apiImpl.CreateReport)
+	http.HandleFunc("/create", apiImpl.CreateReportFromAWS)
 	http.HandleFunc("/status", apiImpl.GetReportStatus)
 	http.HandleFunc("/filePath", apiImpl.GetReportFilePath)
 

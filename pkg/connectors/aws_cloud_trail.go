@@ -1,4 +1,4 @@
-package sources
+package connectors
 
 import (
 	"alex/entro/pkg/report"

@@ -11,10 +11,9 @@ type ID string
 
 // SecretMetadata is the metadata of a secret
 type SecretMetadata struct {
-	ID     string            `json:"id"`
-	Name   string            `json:"name"`
-	Region string            `json:"region"`
-	Tags   map[string]string `json:"tags"`
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+	Region string `json:"region"`
 }
 
 // AuditTrail is an audit trail
@@ -26,8 +25,8 @@ type AuditTrail struct {
 
 // Entry is an entry of a report
 type Entry struct {
-	SecretMetadata SecretMetadata `json:"metadata"`
-	Logs           []AuditTrail   `json:"logs"`
+	SecretMetadata
+	Logs []AuditTrail `json:"logs"`
 }
 
 // Status is the status of a report
