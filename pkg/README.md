@@ -19,7 +19,7 @@ A connector connects to an external service to retrieve an abstracted set of dat
 - a connector to secret managers, which is used to list the secrets metadata 
 - a connector to audit trail managers, which is used to list the audit logs for a secret
 
-The data abstractions are defined in `pkg/report/report.go`, see the structs `SecretMetadata` and `AuditTrail`. The reasons for these abstraction, is to be able to connect to any type of secrets manager and audit trail manager, and return a unified format for the retrieved information.
+The data abstractions are defined in `pkg/report/report.go`, see the structs `SecretMetadata` and `AuditTrail`. The reasons for these abstractions, is to be able to connect to any type of secrets manager and audit trail manager, and return a unified format for the retrieved information.
 
 ### Report request
 
