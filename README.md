@@ -1,6 +1,6 @@
 ### Entro
 
-Entro correlates secrets metadata stored in a Secrets Manager to its audit trail events. It generates a report, that can be downloaded.
+Entro correlates secrets metadata stored in a Secrets Manager to its audit trail events. It generates a report, that can be downloaded. It currently supports only AWS.
 
 
 #### Installation
