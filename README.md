@@ -11,4 +11,8 @@ Entro correlates secrets metadata stored in a Secrets Manager to its audit trail
 
 #### Requirements
 
-The binary needs to be able to write into `/tmp`.
+- The binary needs to be able to write into `/tmp`.
+
+#### Limitations
+
+- Runs only for a single region in AWS
