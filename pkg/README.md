@@ -9,7 +9,7 @@ The server offers three different operations:
 
 - an API server 
 - a queue for report requests - currently a go channel
-- a database, used to store the status of the report - currently an in-memory database
+- a database, used to store the status of the report - currently an in-memory map
 - an external storage, used to store the reports - currently local in `/tmp`
 - connectors to external services, uses to retrieve the data needed for reports
 
