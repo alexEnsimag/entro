@@ -16,8 +16,8 @@ The server offers three different operations:
 ### Connectors
 
 A connector connects to an external service to retrieve an abstracted set of data. There are two types of connectors (see in `pkg/connectors`, the interfaces `SecretsManager` and `AuditTrailManager`):
-- A connector to secret managers, which is used to list the secrets metadata 
-- A connector to audit trail managers, which is used to list the audit logs for a secret
+- a connector to secret managers, which is used to list the secrets metadata 
+- a connector to audit trail managers, which is used to list the audit logs for a secret
 
 The data abstractions are defined in `pkg/report/report.go`, see the structs `SecretMetadata` and `AuditTrail`. The reasons for these abstraction, is to be able to connect to any type of secrets manager and audit trail manager, and return a unified format for the retrieved information.
 
