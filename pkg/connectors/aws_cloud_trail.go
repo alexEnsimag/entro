@@ -8,6 +8,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/cloudtrail"
 )
 
+const maxEvents int64 = 1000
+
 // AuditTrailManager is a set of operations on an audit trail manager
 type AuditTrailManager interface {
 	ListAuditTrails(secretName string) ([]report.AuditTrail, error)
@@ -22,7 +24,7 @@ type AWSCloudTrail struct {
 func (impl AWSCloudTrail) ListAuditTrails(secretName string) ([]report.AuditTrail, error) {
 	svc := cloudtrail.New(&impl.AWSSession)
 
-	maxResult := int64(100)
+	maxResult := maxEvents
 	resourceName := "ResourceName"
 	eventSource := "EventSource"
 	eventSourceSecretsManager := "secretsmanager.amazonaws.com"

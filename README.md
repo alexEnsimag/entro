@@ -18,3 +18,5 @@ Entro correlates secrets metadata stored in a Secrets Manager to its audit trail
 
 - Runs only for a single region in AWS
 - Cannot accept more than a 1000 concurrent requests
+- Limited to 1000 secrets for a region
+- Limited to 1000 events for a secret

@@ -8,6 +8,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/secretsmanager"
 )
 
+const maxSecrets int64 = 1000
+
 // SecretsManager is a set of operations on a secret manager
 type SecretsManager interface {
 	ListSecrets() ([]report.SecretMetadata, error)
@@ -23,13 +25,10 @@ func (impl AWSSecretsManager) ListSecrets() ([]report.SecretMetadata, error) {
 	svc := secretsmanager.New(&impl.AWSSession)
 
 	trueVar := true
-	maxResult := int64(100)
+	maxResult := maxSecrets
 	secrets, err := svc.ListSecrets(&secretsmanager.ListSecretsInput{
-		Filters:                nil,
 		IncludePlannedDeletion: &trueVar,
 		MaxResults:             &maxResult,
-		NextToken:              nil,
-		SortOrder:              nil,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list secrets: %w", err)
